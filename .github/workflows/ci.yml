@@ -1,0 +1,43 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "file:./dev.db"
+      NEXTAUTH_SECRET: "ci-secret-for-testing-key-32-chars-long"
+      NEXTAUTH_URL: "http://localhost:3000"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Generate Prisma Client & Sync Schema
+        run: |
+          npx prisma db push --skip-generate
+          npx prisma generate
+
+      - name: Run Unit Tests (Vitest)
+        run: npm test
+
+      - name: Verify TypeScript Types
+        run: npx tsc --noEmit
+
+      - name: Build Next.js Production Bundle
+        run: npm run build
